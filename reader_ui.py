@@ -1,125 +1,115 @@
 import tkinter as tk
 from tkinter import ttk
+import webbrowser
 
 class ReaderUI:
-    def __init__(self, parent, content_manager):
+    def __init__(self, parent, content_manager, article_manager):
         self.parent = parent
         self.content_manager = content_manager
+        self.article_manager = article_manager
+        self.current_article = None
         self.setup_reader_pane()
 
     def setup_reader_pane(self):
         self.reader_frame = ttk.LabelFrame(self.parent, text="Article Reader")
         
-        # Search functionality
-        self.setup_search_frame()
+        # Setup controls
+        self.setup_search_controls()
+        self.setup_article_controls()
         
-        # Toolbar
-        self.setup_toolbar()
-        
-        # Article text area
+        # Setup text area
         self.setup_text_area()
-        
-        return self.reader_frame
 
-    def setup_search_frame(self):
+    def setup_search_controls(self):
         search_frame = ttk.Frame(self.reader_frame)
         search_frame.pack(fill=tk.X, padx=5, pady=5)
         
+        # Search entry
         ttk.Label(search_frame, text="Search:").pack(side=tk.LEFT, padx=5)
-        self.search_entry = ttk.Entry(search_frame)
-        self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        self.search_var = tk.StringVar()
+        self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
+        self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        self.prev_btn = ttk.Button(search_frame, text="↑", width=3)
+        # Search navigation
+        self.prev_btn = ttk.Button(search_frame, text="↑", width=3,
+                                command=lambda: self.navigate_search('prev'))
+        self.next_btn = ttk.Button(search_frame, text="↓", width=3,
+                                command=lambda: self.navigate_search('next'))
+        
         self.prev_btn.pack(side=tk.LEFT)
-        
-        self.next_btn = ttk.Button(search_frame, text="↓", width=3)
         self.next_btn.pack(side=tk.LEFT)
         
         self.match_label = ttk.Label(search_frame, text="")
         self.match_label.pack(side=tk.LEFT, padx=5)
 
-    def setup_toolbar(self):
-        toolbar = ttk.Frame(self.reader_frame)
-        toolbar.pack(fill=tk.X, padx=5)
+    def setup_article_controls(self):
+        control_frame = ttk.Frame(self.reader_frame)
+        control_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        # Regular buttons
-        self.browser_btn = ttk.Button(toolbar, text="Open in Browser")
-        self.browser_btn.pack(side=tk.LEFT, padx=5)
+        # Article management buttons
+        self.read_btn = ttk.Button(control_frame, text="Mark as Read",
+                                command=self.mark_current_as_read)
+        self.save_btn = ttk.Button(control_frame, text="Save Article",
+                                command=self.save_current_article)
+        self.open_btn = ttk.Button(control_frame, text="Open in Browser",
+                                command=self.open_in_browser)
         
-        self.save_btn = ttk.Button(toolbar, text="Save for Later")
-        self.save_btn.pack(side=tk.LEFT, padx=5)
-        
-        # Mark as read button
-        self.read_btn = ttk.Button(toolbar, text="Mark as Read")
-        self.read_btn.pack(side=tk.LEFT, padx=5)
-        
-        # Zoom controls
-        self.zoom_in_btn = ttk.Button(toolbar, text="Zoom In")
-        self.zoom_in_btn.pack(side=tk.RIGHT, padx=5)
-        
-        self.zoom_out_btn = ttk.Button(toolbar, text="Zoom Out")
-        self.zoom_out_btn.pack(side=tk.RIGHT, padx=5)
+        self.read_btn.pack(side=tk.LEFT, padx=2)
+        self.save_btn.pack(side=tk.LEFT, padx=2)
+        self.open_btn.pack(side=tk.LEFT, padx=2)
 
     def setup_text_area(self):
-        self.text = tk.Text(
-            self.reader_frame,
-            wrap=tk.WORD,
-            padx=20,
-            pady=20,
-            spacing1=2,
-            spacing2=2
-        )
-        
+        self.text = tk.Text(self.reader_frame, wrap=tk.WORD, padx=20, pady=20)
         scrollbar = ttk.Scrollbar(self.reader_frame, command=self.text.yview)
         self.text.configure(yscrollcommand=scrollbar.set)
         
         self.text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # Configure tags
+        # Configure text tags
         self.text.tag_configure('title', font=('Arial', 14, 'bold'))
         self.text.tag_configure('metadata', font=('Arial', 10, 'italic'))
         self.text.tag_configure('content', font=('Arial', 11))
-        self.text.tag_configure('read', foreground='gray')
 
-    def create_content_tree(self, parent):
-        frame = ttk.Frame(parent)
-        frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+    def display_article(self, article_data):
+        self.current_article = article_data
+        self.text.delete('1.0', tk.END)
         
-        # Create tree with read status column
-        columns = ("status", "date", "source", "title")
-        tree = ttk.Treeview(frame, columns=columns, show="headings")
+        # Display article content
+        self.text.insert(tk.END, article_data['title'] + '\n\n', 'title')
+        self.text.insert(tk.END, f"{article_data['date']} | {article_data['source']}\n\n", 'metadata')
+        self.text.insert(tk.END, article_data['content'], 'content')
         
-        tree.heading("status", text="")
-        tree.heading("date", text="Date")
-        tree.heading("source", text="Source")
-        tree.heading("title", text="Title")
-        
-        tree.column("status", width=30)
-        tree.column("date", width=100)
-        tree.column("source", width=150)
-        tree.column("title", width=400)
-        
-        # Configure tag for read items
-        tree.tag_configure('read', foreground='gray')
-        
-        scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=tree.yview)
-        tree.configure(yscrollcommand=scrollbar.set)
-        
-        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        return tree
+        # Update button states
+        self.update_button_states()
 
-    def update_read_status(self, tree_item):
-        """Update the visual appearance of a read item"""
-        tree = tree_item.widget
-        item_id = tree_item.selection()[0]
-        url = tree.item(item_id)['tags'][1]
-        
-        if self.content_manager.is_read(url):
-            tree.item(item_id, tags=('read',))
-            tree.set(item_id, 'status', '✓')
+    def update_button_states(self):
+        if self.current_article:
+            state = 'normal'
+            # Update read button text based on status
+            if self.article_manager.is_read(self.current_article['url']):
+                self.read_btn.configure(text="Mark as Unread")
+            else:
+                self.read_btn.configure(text="Mark as Read")
         else:
-            tree.item(item_id, tags=())
-            tree.set(item_id, 'status', '')
+            state = 'disabled'
+        
+        self.read_btn.configure(state=state)
+        self.save_btn.configure(state=state)
+        self.open_btn.configure(state=state)
+
+    def mark_current_as_read(self):
+        if self.current_article:
+            self.article_manager.mark_as_read(self.current_article['url'])
+            self.update_button_states()
+
+    def save_current_article(self):
+        if self.current_article:
+            if self.article_manager.save_article(self.current_article):
+                tk.messagebox.showinfo("Success", "Article saved successfully!")
+            else:
+                tk.messagebox.showinfo("Info", "Article already saved")
+
+    def open_in_browser(self):
+        if self.current_article:
+            webbrowser.open(self.current_article['url'])
