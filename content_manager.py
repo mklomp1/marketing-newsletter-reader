@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 from datetime import datetime
+from read_tracker import ReadTracker
 
 class ContentManager:
     def __init__(self):
@@ -20,6 +21,7 @@ class ContentManager:
         }
         
         self.saved_content = []
+        self.read_tracker = ReadTracker()
         self.load_saved_content()
 
     def refresh_all_content(self):
@@ -30,8 +32,15 @@ class ContentManager:
         for source, url in self.feeds.items():
             try:
                 feed = feedparser.parse(url)
-                # Process feed entries
-                pass
+                for entry in feed.entries:
+                    is_read = self.read_tracker.is_read(entry.link)
+                    yield {
+                        'title': entry.title,
+                        'link': entry.link,
+                        'source': source,
+                        'date': entry.published,
+                        'read': is_read
+                    }
             except Exception as e:
                 print(f"Error fetching {source}: {e}")
 
@@ -40,10 +49,25 @@ class ContentManager:
             try:
                 response = requests.get(info['url'])
                 soup = BeautifulSoup(response.text, 'html.parser')
-                # Process newsletter content
-                pass
+                articles = soup.find_all('article')
+                for article in articles:
+                    link = article.find('a')['href']
+                    is_read = self.read_tracker.is_read(link)
+                    yield {
+                        'title': article.find('h2').text.strip(),
+                        'link': link,
+                        'source': source,
+                        'date': article.find('time').text if article.find('time') else 'No date',
+                        'read': is_read
+                    }
             except Exception as e:
                 print(f"Error fetching {source}: {e}")
+
+    def mark_as_read(self, article_url):
+        self.read_tracker.mark_as_read(article_url)
+
+    def is_read(self, article_url):
+        return self.read_tracker.is_read(article_url)
 
     def load_saved_content(self):
         try:
