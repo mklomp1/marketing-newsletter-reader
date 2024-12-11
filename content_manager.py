@@ -1,58 +1,51 @@
-import feedparser
 import requests
 from bs4 import BeautifulSoup
-import json
 from datetime import datetime
+import json
+from urllib.request import urlopen
+from xml.etree import ElementTree
 
 class ContentManager:
-    def __init__(self):
+    def __init__(self, article_manager, notes_manager):
+        self.article_manager = article_manager
+        self.notes_manager = notes_manager
         self.feeds = {
             "Search Engine Land": "https://searchengineland.com/feed",
             "Search Engine Journal": "https://www.searchenginejournal.com/feed",
             "Frankwatching": "https://www.frankwatching.com/feed/"
         }
-        
-        self.newsletter_sources = {
-            "PPC Mastery": {
-                "url": "https://www.ppcmastery.com/blog",
-                "type": "ppc"
-            }
-        }
-        
-        self.saved_content = []
-        self.load_saved_content()
 
-    def refresh_all_content(self):
-        self.fetch_news()
-        self.fetch_newsletters()
+    def parse_rss(self, url):
+        """Parse RSS feed using built-in XML parser"""
+        try:
+            response = urlopen(url)
+            tree = ElementTree.parse(response)
+            root = tree.getroot()
+            
+            # Find the correct RSS namespace
+            ns = {'': root.tag.split('}')[0].strip('{') if '}' in root.tag else ''}
+            
+            articles = []
+            for item in root.findall('.//item', ns):
+                article = {
+                    'title': item.find('title', ns).text if item.find('title', ns) is not None else 'No title',
+                    'link': item.find('link', ns).text if item.find('link', ns) is not None else '',
+                    'description': item.find('description', ns).text if item.find('description', ns) is not None else '',
+                    'date': item.find('pubDate', ns).text if item.find('pubDate', ns) is not None else ''
+                }
+                articles.append(article)
+            return articles
+        except Exception as e:
+            print(f"Error parsing RSS feed: {e}")
+            return []
 
     def fetch_news(self):
+        all_articles = []
         for source, url in self.feeds.items():
-            try:
-                feed = feedparser.parse(url)
-                # Process feed entries
-                pass
-            except Exception as e:
-                print(f"Error fetching {source}: {e}")
+            articles = self.parse_rss(url)
+            for article in articles:
+                article['source'] = source
+            all_articles.extend(articles)
+        return all_articles
 
-    def fetch_newsletters(self):
-        for source, info in self.newsletter_sources.items():
-            try:
-                response = requests.get(info['url'])
-                soup = BeautifulSoup(response.text, 'html.parser')
-                # Process newsletter content
-                pass
-            except Exception as e:
-                print(f"Error fetching {source}: {e}")
-
-    def load_saved_content(self):
-        try:
-            with open('saved_content.json', 'r') as f:
-                self.saved_content = json.load(f)
-        except FileNotFoundError:
-            self.saved_content = []
-
-    def save_content(self, content):
-        self.saved_content.append(content)
-        with open('saved_content.json', 'w') as f:
-            json.dump(self.saved_content, f)
+    # ... rest of the class implementation ...
