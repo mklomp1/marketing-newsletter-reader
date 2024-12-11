@@ -10,38 +10,41 @@ class ReaderUI:
         self.notes_manager = notes_manager
         self.current_article = None
         self.notes_visible = False
+        
+        # Set minimum window size
+        self.parent.minsize(1000, 600)  # Minimum width for comfortable reading
         self.setup_reader_pane()
 
     def setup_reader_pane(self):
-        # Set minimum window size
-        self.parent.minsize(1200, 800)  # Minimum width for comfortable reading
-        
         self.reader_frame = ttk.Frame(self.parent)
         self.reader_frame.pack(fill=tk.BOTH, expand=True)
         
         # Top controls
         self.setup_controls()
         
-        # Content area
-        self.setup_content_area()
+        # Content area with PanedWindow for resizable split
+        self.content_frame = ttk.PanedWindow(self.reader_frame, orient=tk.HORIZONTAL)
+        self.content_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # Configure text tags
-        self.setup_text_styles()
+        # Article text area (75% width)
+        self.setup_article_area()
+        
+        # Notes panel (25% width, initially hidden)
+        self.setup_notes_panel()
 
     def setup_controls(self):
         self.control_frame = ttk.Frame(self.reader_frame)
         self.control_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        # Back button with some padding
+        # Back button
         self.back_btn = ttk.Button(self.control_frame, text="← Back",
                                 command=self.go_back)
-        self.back_btn.pack(side=tk.LEFT, padx=5)
+        self.back_btn.pack(side=tk.LEFT)
         
         # Right-side controls
         right_controls = ttk.Frame(self.control_frame)
-        right_controls.pack(side=tk.RIGHT, padx=5)
+        right_controls.pack(side=tk.RIGHT)
         
-        # Controls with consistent spacing
         self.save_btn = ttk.Button(right_controls, text="Save",
                                 command=self.save_current_article)
         self.open_btn = ttk.Button(right_controls, text="Open in Browser",
@@ -49,83 +52,76 @@ class ReaderUI:
         self.toggle_notes_btn = ttk.Button(right_controls, text="Show Notes",
                                        command=self.toggle_notes)
         
-        self.save_btn.pack(side=tk.LEFT, padx=5)
-        self.open_btn.pack(side=tk.LEFT, padx=5)
-        self.toggle_notes_btn.pack(side=tk.LEFT, padx=5)
+        self.save_btn.pack(side=tk.LEFT, padx=2)
+        self.open_btn.pack(side=tk.LEFT, padx=2)
+        self.toggle_notes_btn.pack(side=tk.LEFT, padx=2)
 
-    def setup_content_area(self):
-        # Main content frame using PanedWindow for resizable split
-        self.content_frame = ttk.PanedWindow(self.reader_frame, orient=tk.HORIZONTAL)
-        self.content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        
-        # Article frame with proper weighting
+    def setup_article_area(self):
         self.article_frame = ttk.Frame(self.content_frame)
-        self.text = tk.Text(self.article_frame, wrap=tk.WORD, padx=30, pady=20)
-        text_scroll = ttk.Scrollbar(self.article_frame, command=self.text.yview)
-        self.text.configure(yscrollcommand=text_scroll.set)
+        
+        # Article content
+        self.text = tk.Text(self.article_frame, wrap=tk.WORD, padx=20, pady=20)
+        article_scroll = ttk.Scrollbar(self.article_frame, command=self.text.yview)
+        self.text.configure(yscrollcommand=article_scroll.set)
         
         self.text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        text_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        article_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # Add article frame with 75% weight
+        # Add to PanedWindow with 75% weight
         self.content_frame.add(self.article_frame, weight=75)
         
-        # Setup notes panel but don't add it yet
-        self.setup_notes_panel()
+        # Configure text styles
+        self.text.tag_configure('title', font=('Arial', 14, 'bold'))
+        self.text.tag_configure('metadata', font=('Arial', 10, 'italic'))
+        self.text.tag_configure('content', font=('Arial', 11))
 
     def setup_notes_panel(self):
         self.notes_frame = ttk.Frame(self.content_frame)
         
-        # Notes header with better spacing
+        # Notes header
         notes_header = ttk.Frame(self.notes_frame)
-        notes_header.pack(fill=tk.X, padx=10, pady=5)
+        notes_header.pack(fill=tk.X, padx=5, pady=5)
         
-        ttk.Label(notes_header, text="Notes", font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
+        ttk.Label(notes_header, text="Notes").pack(side=tk.LEFT)
         self.delete_note_btn = ttk.Button(notes_header, text="Delete",
                                        command=self.delete_current_note)
         self.delete_note_btn.pack(side=tk.RIGHT)
         
-        # Notes text area with fixed width ratio
+        # Notes text area
         self.notes_text = tk.Text(self.notes_frame, wrap=tk.WORD)
         notes_scroll = ttk.Scrollbar(self.notes_frame, command=self.notes_text.yview)
         self.notes_text.configure(yscrollcommand=notes_scroll.set)
         
-        self.notes_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(10, 0))
+        self.notes_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         notes_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-
-    def setup_text_styles(self):
-        self.text.tag_configure('title', font=('Arial', 16, 'bold'))
-        self.text.tag_configure('metadata', font=('Arial', 10, 'italic'))
-        self.text.tag_configure('content', font=('Arial', 11))
 
     def toggle_notes(self):
         if self.notes_visible:
             self.content_frame.forget(self.notes_frame)
             self.toggle_notes_btn.configure(text="Show Notes")
             self.notes_visible = False
-            # Adjust the article frame to take full width
-            self.content_frame.update()
         else:
             # Add notes panel with 25% weight
             self.content_frame.add(self.notes_frame, weight=25)
             self.toggle_notes_btn.configure(text="Hide Notes")
             self.notes_visible = True
-            # Ensure proper ratio
-            self.content_frame.update()
 
     def display_article(self, article_data):
         self.current_article = article_data
         self.text.delete('1.0', tk.END)
         
-        # Display article with proper spacing
+        # Display article with proper padding and margins
         self.text.insert(tk.END, article_data['title'] + '\n\n', 'title')
         self.text.insert(tk.END, f"{article_data['date']} • {article_data['source']}\n\n", 'metadata')
-        self.text.insert(tk.END, article_data['content'], 'content')
+        self.text.insert(tk.END, article_data['content'] + '\n\n', 'content')
         
         # Handle notes
         self.notes_text.delete('1.0', tk.END)
         if self.notes_manager.has_note(article_data['url']):
             self.notes_text.insert('1.0', self.notes_manager.get_note(article_data['url']))
+            if not self.notes_visible:
+                self.toggle_notes()
         
-        # Update UI state
+        # Scroll to top
+        self.text.see('1.0')
         self.update_button_states()
