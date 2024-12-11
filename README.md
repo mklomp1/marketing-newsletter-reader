@@ -1,21 +1,21 @@
-# Marketing Newsletter Reader
+# Marketing News App
 
-A Python application to read and manage marketing newsletters and news feeds with search functionality.
+A Python application for reading and managing marketing news and newsletters with note-taking capabilities.
 
 ## Features
 
 - RSS feed integration for marketing news websites
-- Newsletter content scraping
-- Full article reading within the application
-- Search functionality with highlighting
+- Newsletter content scraping and management
+- Full-width article reading with optional notes panel
 - Save articles for later reading
-- Zoom controls for better readability
+- Take and manage notes for articles
+- Search functionality
 
-## Setup
+## Installation
 
 1. Install required packages:
 ```bash
-pip install feedparser beautifulsoup4 requests
+pip install -r requirements.txt
 ```
 
 2. Run the application:
@@ -25,7 +25,8 @@ python newsletter_reader.py
 
 ## Usage
 
-- Use the tabs to switch between news, newsletters, and saved items
-- Click on any article to read it in the right pane
-- Use the search bar to find specific content
-- Save interesting articles for later reading
+- Use tabs to switch between News, Newsletters, Notes, and Saved items
+- Click any article to read in full-screen mode
+- Toggle notes panel with the 'Show/Hide Notes' button
+- Save articles and manage notes
+- Search functionality for finding specific content
